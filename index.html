@@ -756,9 +756,13 @@ function init(){
   updateClock();setInterval(updateClock,1000);
   buildCategories();renderProducts();renderCart();
   updateCustomerDatalist();checkLowStock();checkAgingAlerts();
-  const today=new Date().toISOString().split('T')[0];
+  const today=localDateStr(new Date());
   document.getElementById('reportFrom').value=today;
   document.getElementById('reportTo').value=today;
+}
+function localDateStr(d){
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dd;
 }
 function updateClock(){
   const n=new Date();
@@ -1011,7 +1015,7 @@ function newSale(){closeModal('receiptModal');clearCart();}
 // PURCHASE MODULE
 function openPurchaseForm(){
   purchaseItemsCount=0;
-  document.getElementById('pDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('pDate').value=localDateStr(new Date());
   document.getElementById('pInvoice').value='';document.getElementById('pNotes').value='';
   document.getElementById('pPaid').value='';document.getElementById('pTotal').textContent='PKR 0';
   document.getElementById('pBalance').textContent='PKR 0';document.getElementById('purchaseItems').innerHTML='';
@@ -1190,7 +1194,7 @@ function renderSuppliersTable(){
 function openPaymentForm(){
   const sel=document.getElementById('paySupplier');
   sel.innerHTML='<option value="">-- Select --</option>'+suppliers.map(s=>`<option value="${s.id}">${s.name} (Bal: PKR ${(s.payableBalance||0).toLocaleString()})</option>`).join('');
-  document.getElementById('payDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('payDate').value=localDateStr(new Date());
   document.getElementById('payAmount').value='';document.getElementById('payNotes').value='';
   document.getElementById('supplierBalanceRow').style.display='none';
   document.getElementById('paymentModal').style.display='flex';
@@ -1395,13 +1399,13 @@ function renderReport(){
   const type=document.getElementById('reportType').value;
   const from=document.getElementById('reportFrom').value;
   const to=document.getElementById('reportTo').value;
-  const fromDate=from?new Date(from):new Date(0);
-  const toDate=to?new Date(to+'T23:59:59'):new Date();
+  const fromDate=from?new Date(from+'T00:00:00'):new Date(0);
+  const toDate=to?new Date(to+'T23:59:59.999'):new Date();
   const filtSales=salesHistory.filter(s=>new Date(s.ts)>=fromDate&&new Date(s.ts)<=toDate);
   const filtReturns=returns.filter(r=>new Date(r.ts)>=fromDate&&new Date(r.ts)<=toDate);
   const returnTotal=filtReturns.reduce((s,r)=>s+(r.refundAmt||0),0);
   const netSales=filtSales.reduce((s,x)=>s+x.grand,0)-returnTotal;
-  const filtPurchases=purchases.filter(p=>{const d=new Date(p.date);return d>=fromDate&&d<=toDate;});
+  const filtPurchases=purchases.filter(p=>{const d=p.ts?new Date(p.ts):new Date(p.date);return !isNaN(d)&&d>=fromDate&&d<=toDate;});
   const el=document.getElementById('reportContent');
   const noData='<div class="report-row" style="justify-content:center;color:var(--text3)">No data in this period</div>';
 
@@ -1604,7 +1608,7 @@ function exportCSV(){
   const csv=rows.map(r=>r.map(v=>'"'+v+'"').join(',')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download='KCC_Sales_v4_'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+  a.download='KCC_Sales_'+localDateStr(new Date())+'.csv';a.click();
 }
 
 // TOAST

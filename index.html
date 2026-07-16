@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KCC POS v13 — Kamran Computer Care</title>
+<title>KCC POS v14 — Kamran Computer Care</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='10' fill='%231d4ed8'/><text x='32' y='46' text-anchor='middle' font-family='Arial Black,Arial' font-size='38' font-weight='900' fill='white'>K</text></svg>">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
       </g>
     </svg>
     <div style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:4px">Kamran Computer Care</div>
-    <div style="font-size:12px;color:#64748b;margin-bottom:28px">POS v13 — Authorized Access Only</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:28px">POS v14 — Authorized Access Only</div>
     <input id="pwdInput" type="password" class="lock-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPwd()">
     <div id="pwdError" class="lock-error"></div>
     <button class="lock-btn" onclick="checkPwd()">Unlock POS</button>
@@ -230,7 +230,7 @@ tr:hover td{background:var(--surface2)}
 <div class="topbar">
   <div class="logo">
     <div class="logo-icon">KCC</div>
-    <div><div class="logo-text">Kamran Computer Care — POS v13</div>
+    <div><div class="logo-text">Kamran Computer Care — POS v14</div>
     <div class="logo-sub">Shop 13, Bhayani Centre · North Nazimabad · 0318-8920020</div></div>
   </div>
   <div class="topbar-right">
@@ -1483,16 +1483,20 @@ function renderReport(){
           <span class="mono" style="color:${(s.payableBalance||0)>0?'var(--red)':'var(--green)'}">Bal: PKR ${(s.payableBalance||0).toLocaleString()}</span></div>`;}).join('')||noData}</div>`;
   } else if(type==='returns'){
     const retTotal=filtReturns.reduce((s,r)=>s+(r.refundAmt||0),0);
-    el.innerHTML=`<div class="stat-grid">
-      <div class="stat-card"><div class="label">Total Returns</div><div class="value" style="color:var(--red)"><span style="font-size:11px;font-weight:400;opacity:.7">PKR </span>${retTotal.toLocaleString()}</div><div class="sub">${filtReturns.length} returns</div></div>
-      </div>
-      <div class="section-title">Return Transactions</div>
-      <div class="report-table">${filtReturns.length?filtReturns.map(r=>`<div class="report-row" style="cursor:pointer" onclick="showDrilldown('Return: ${r.billId||''}',\`<div style='font-size:12px'><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Original Bill:</span><span>${r.billId||'—'}</span></div><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Customer:</span><span>${r.name||'—'}</span></div><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Items:</span><span>${r.name||'—'} x${r.qty||0}</span></div><div style='display:flex;justify-content:space-between;font-weight:700;color:var(--red)'><span>Amount</span><span>PKR ${(r.refundAmt||0).toLocaleString()}</span></div><div style='margin-top:8px;color:var(--text3)'>${r.reason||''}</div></div>\`)">
-        <span class="mono" style="color:var(--accent)">${r.billId||'—'}</span>
-        <span>${r.name||'—'}</span>
-        <span>${r.date||''}</span>
-        <span class="mono" style="color:var(--red)">-PKR ${(r.refundAmt||0).toLocaleString()}</span>
-        <span style="color:var(--text3);font-size:11px">${r.reason||''}</span></div>`).join(''):noData}</div>`;
+    el.innerHTML='<div class="stat-grid">'+
+      '<div class="stat-card"><div class="label">Total Returns</div><div class="value" style="color:var(--red)"><span style="font-size:11px;font-weight:400;opacity:.7">PKR </span>'+retTotal.toLocaleString()+'</div><div class="sub">'+filtReturns.length+' returns</div></div>'+
+      '<div class="stat-card"><div class="label">Items Returned</div><div class="value">'+filtReturns.reduce((s,r)=>s+(r.qty||0),0)+'</div></div>'+
+      '</div>'+
+      '<div class="section-title">Return Transactions</div>'+
+      '<div class="report-table">'+(filtReturns.length?filtReturns.map(function(r){
+        return '<div class="report-row" style="cursor:pointer" onclick="drillReturn(\''+r.id+'\')">'+
+        '<span class="mono" style="color:var(--accent)">'+(r.billId||'—')+'</span>'+
+        '<span>'+(r.name||'—')+' x'+(r.qty||0)+'</span>'+
+        '<span>'+(r.date||'')+'</span>'+
+        '<span class="mono" style="color:var(--red)">-PKR '+(r.refundAmt||0).toLocaleString()+'</span>'+
+        '<span style="color:var(--text3);font-size:11px">'+(r.reason||'—')+'</span>'+
+        '<span class="badge '+(r.refund==='cash'?'badge-green':'badge-purple')+'">'+(r.refund||'').toUpperCase()+'</span></div>';
+      }).join(''):noData)+'</div>';
   } else if(type==='purchase'){
     const purTotal=filtPurchases.reduce((s,x)=>s+x.total,0);
     const purPaid=filtPurchases.reduce((s,x)=>s+x.paid,0);
@@ -1688,6 +1692,24 @@ function showDrilldown(title, html){
   document.getElementById('drilldownTitle').textContent=title;
   document.getElementById('drilldownContent').innerHTML=html;
   document.getElementById('drilldownModal').style.display='flex';
+}
+function drillReturn(id){
+  const r=returns.find(x=>x.id===id);if(!r)return;
+  const sale=salesHistory.find(s=>s.id===r.billId);
+  showDrilldown('Return: '+(r.billId||''),
+    '<div style="font-size:12px">'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text3)">Original Bill:</span><span style="color:var(--accent)">'+(r.billId||'—')+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text3)">Date:</span><span>'+(r.date||'—')+'</span></div>'+
+    (sale?'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text3)">Customer:</span><span>'+sale.customer+'</span></div>':'')+
+    '<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text3)">Product:</span><span>'+(r.name||'—')+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text3)">Qty Returned:</span><span>'+(r.qty||0)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text3)">Reason:</span><span>'+(r.reason||'—')+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text3)">Refund Type:</span><span class="badge '+(r.refund==='cash'?'badge-green':'badge-purple')+'">'+(r.refund||'').toUpperCase()+'</span></div>'+
+    '<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">'+
+    '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;color:var(--red)"><span>REFUND AMOUNT</span><span>PKR '+(r.refundAmt||0).toLocaleString()+'</span></div>'+
+    (sale?'<button class="btn-sm" style="margin-top:12px;width:100%" onclick="closeModal(\'drilldownModal\');setTimeout(function(){drillSale(\''+r.billId+'\')},200)">View Original Bill</button>':'')+
+    '</div>');
 }
 function drillItem(name, sales){
   const itemSales=sales.filter(s=>s.items.some(i=>i.name===name));

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KCC POS v10 — Kamran Computer Care</title>
+<title>KCC POS v11 — Kamran Computer Care</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='10' fill='%231d4ed8'/><text x='32' y='46' text-anchor='middle' font-family='Arial Black,Arial' font-size='38' font-weight='900' fill='white'>K</text></svg>">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -148,7 +148,7 @@ tr:hover td{background:var(--surface2)}
 .stat-card .sub{font-size:10px;color:var(--text3);margin-top:3px}
 .section-title{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 .report-table{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-.report-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;gap:8px}
+.report-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;gap:8px}.report-row .mono{text-align:right;min-width:100px}
 .report-row:last-child{border-bottom:none}
 .report-row:hover{background:var(--surface2)}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
       </g>
     </svg>
     <div style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:4px">Kamran Computer Care</div>
-    <div style="font-size:12px;color:#64748b;margin-bottom:28px">POS v10 — Authorized Access Only</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:28px">POS v11 — Authorized Access Only</div>
     <input id="pwdInput" type="password" class="lock-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPwd()">
     <div id="pwdError" class="lock-error"></div>
     <button class="lock-btn" onclick="checkPwd()">Unlock POS</button>
@@ -230,7 +230,7 @@ tr:hover td{background:var(--surface2)}
 <div class="topbar">
   <div class="logo">
     <div class="logo-icon">KCC</div>
-    <div><div class="logo-text">Kamran Computer Care — POS v10</div>
+    <div><div class="logo-text">Kamran Computer Care — POS v11</div>
     <div class="logo-sub">Shop 13, Bhayani Centre · North Nazimabad · 0318-8920020</div></div>
   </div>
   <div class="topbar-right">
@@ -377,9 +377,10 @@ tr:hover td{background:var(--surface2)}
         <option value="">All Stock</option><option value="low">Low Stock</option><option value="out">Out of Stock</option>
       </select>
       <button class="btn-add" onclick="openAdjustmentForm()">⚙️ Stock Adjustment</button>
+      <button class="btn-action" onclick="openDamageForm()" style="background:var(--red)">🔴 Report Damage</button>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>ID</th><th>Product</th><th>Category</th><th>Buy Price</th><th>Sale Price</th><th>Margin</th><th>Stock</th><th>Stock Value</th><th>Status</th></tr></thead>
+      <table><thead><tr><th>ID</th><th>Product</th><th>Category</th><th>Shelf</th><th>Buy Price</th><th>Sale Price</th><th>Margin</th><th>Stock</th><th>Stock Value (Cost)</th><th>Stock Value (Sale)</th><th>Status</th></tr></thead>
       <tbody id="inventoryTableBody"></tbody></table>
     </div>
   </div>
@@ -616,7 +617,7 @@ tr:hover td{background:var(--surface2)}
         <div class="form-group full"><label class="form-label">Product Name</label><input class="form-input" id="fName" placeholder="Full name"></div>
         <div class="form-group"><label class="form-label">Purchase Price (PKR)</label><input class="form-input" type="number" id="fBuyPrice" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Sale Price (PKR)</label><input class="form-input" type="number" id="fPrice" placeholder="0"></div>
-        <div class="form-group"><label class="form-label">Stock Qty</label><input class="form-input" type="number" id="fStock" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Shelf / Location</label><input class="form-input" id="fShelf" placeholder="e.g. A1, B2"></div>
         <div class="form-group"><label class="form-label">Low Stock Alert (qty)</label><input class="form-input" type="number" id="fLowAlert" placeholder="5"></div>
       </div>
       <div class="form-actions">
@@ -638,6 +639,14 @@ tr:hover td{background:var(--surface2)}
       </div>
       <div id="categoryList"></div>
     </div>
+  </div>
+</div>
+
+<!-- DRILLDOWN MODAL -->
+<div class="modal-overlay" id="drilldownModal" style="display:none">
+  <div class="modal wide">
+    <div class="modal-header"><h2 id="drilldownTitle">Details</h2><button class="modal-close" onclick="closeModal('drilldownModal')">×</button></div>
+    <div class="modal-body" id="drilldownContent"></div>
   </div>
 </div>
 
@@ -1010,7 +1019,7 @@ function openPurchaseForm(){
 function addPurchaseItem(){
   purchaseItemsCount++;const n=purchaseItemsCount;
   const div=document.createElement('div');div.id='pItem'+n;
-  div.style.cssText='display:grid;grid-template-columns:1fr 2fr 1fr 1fr 30px;gap:6px;margin-bottom:6px;align-items:center';
+  div.style.cssText='display:grid;grid-template-columns:1fr 2fr 1fr 1fr 80px 30px;gap:6px;margin-bottom:6px;align-items:center';
   const catOpts=CATEGORIES.map(cat=>'<option value="'+cat+'">'+cat+'</option>').join('');
   const prodOpts=PRODUCTS.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('');
   div.innerHTML=
@@ -1020,6 +1029,7 @@ function addPurchaseItem(){
     '<option value="">-- Product --</option>'+prodOpts+'</select>'+
     '<input class="form-input" type="number" id="piQty'+n+'" placeholder="Qty" min="1" oninput="calcPurchaseTotal()">'+
     '<input class="form-input" type="number" id="piPrice'+n+'" placeholder="Rate" oninput="calcPurchaseTotal()">'+
+    '<input class="form-input" id="piShelf'+n+'" placeholder="Shelf">'+
     '<button onclick="document.getElementById(\'pItem'+n+'\').remove();calcPurchaseTotal()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">x</button>';
   document.getElementById('purchaseItems').appendChild(div);
 }
@@ -1053,7 +1063,7 @@ function savePurchase(){
     if(!prodEl||!prodEl.value)continue;
     const qty=parseInt(document.getElementById('piQty'+i)?.value)||0;
     const price=parseFloat(document.getElementById('piPrice'+i)?.value)||0;
-    if(qty>0&&price>0){const prod=PRODUCTS.find(p=>p.id===prodEl.value);items.push({productId:prodEl.value,name:prod?.name||'',qty,price,total:qty*price});}
+    if(qty>0&&price>0){const prod=PRODUCTS.find(p=>p.id===prodEl.value);const shelf=document.getElementById('piShelf'+i)?.value?.trim()||'';items.push({productId:prodEl.value,name:prod?.name||'',qty,price,total:qty*price,shelf});}
   }
   if(!items.length){showToast('Add at least one item','error');return;}
   const total=items.reduce((s,i)=>s+i.total,0);
@@ -1061,7 +1071,7 @@ function savePurchase(){
   purchaseCounter++;sv('kcc_pur_no',purchaseCounter);
   const pur={id:'PUR-'+purchaseCounter,supplierId,date,invoiceNo:document.getElementById('pInvoice').value.trim(),type,items,total,paid,balance,notes:document.getElementById('pNotes').value.trim(),ts:Date.now()};
   purchases.unshift(pur);savePurchases();
-  items.forEach(item=>{const p=PRODUCTS.find(x=>x.id===item.productId);if(p){p.stock+=item.qty;p.buyPrice=item.price;}});
+  items.forEach(item=>{const p=PRODUCTS.find(x=>x.id===item.productId);if(p){p.stock+=item.qty;p.buyPrice=item.price;if(item.shelf)p.shelf=item.shelf;}});
   saveProducts();filterProducts();buildCategories();
   if(supplierId){const sup=suppliers.find(s=>s.id===supplierId);if(sup){sup.payableBalance=(sup.payableBalance||0)+balance;saveSuppliers();}}
   closeModal('purchaseModal');renderPurchaseTable();renderInventoryTable();
@@ -1227,6 +1237,14 @@ function renderInventoryTable(){
       <td>${status}</td></tr>`;
   }).join('');
 }
+function openDamageForm(){
+  const sel=document.getElementById('adjProduct');
+  sel.innerHTML='<option value="">-- Select --</option>'+PRODUCTS.map(p=>`<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`).join('');
+  document.getElementById('adjType').value='damage';
+  document.getElementById('adjQty').value='';
+  document.getElementById('adjNotes').value='Damaged/Broken item';
+  document.getElementById('adjustmentModal').style.display='flex';
+}
 function openAdjustmentForm(){
   const sel=document.getElementById('adjProduct');
   sel.innerHTML='<option value="">-- Select --</option>'+PRODUCTS.map(p=>`<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`).join('');
@@ -1339,10 +1357,10 @@ function openProductForm(id){
     document.getElementById('fId').value=p.id;document.getElementById('fId').disabled=true;
     document.getElementById('fName').value=p.name;document.getElementById('fCat').value=p.cat;
     document.getElementById('fBuyPrice').value=p.buyPrice||0;document.getElementById('fPrice').value=p.price;
-    document.getElementById('fStock').value=p.stock;document.getElementById('fLowAlert').value=p.lowAlert||5;
+    document.getElementById('fStock')&&(document.getElementById('fStock').value=p.stock);document.getElementById('fLowAlert').value=p.lowAlert||5;document.getElementById('fShelf').value=p.shelf||'';
   } else {
     document.getElementById('fId').value='';document.getElementById('fId').disabled=false;
-    ['fName','fBuyPrice','fPrice','fStock'].forEach(x=>document.getElementById(x).value='');
+    ['fName','fBuyPrice','fPrice'].forEach(x=>document.getElementById(x).value='');document.getElementById('fShelf').value='';
     document.getElementById('fLowAlert').value=5;
   }
   document.getElementById('productModal').style.display='flex';
@@ -1353,11 +1371,12 @@ function saveProduct(){
   const cat=document.getElementById('fCat').value;
   const buyPrice=parseFloat(document.getElementById('fBuyPrice').value)||0;
   const price=parseFloat(document.getElementById('fPrice').value)||0;
-  const stock=parseInt(document.getElementById('fStock').value)||0;
+  const stock=editingProdId?(PRODUCTS.find(x=>x.id===editingProdId)?.stock||0):0;
   const lowAlert=parseInt(document.getElementById('fLowAlert').value)||5;
   if(!id||!name||!price){showToast('Fill required fields','error');return;}
-  if(editingProdId){const p=PRODUCTS.find(x=>x.id===editingProdId);if(p){p.name=name;p.cat=cat;p.buyPrice=buyPrice;p.price=price;p.stock=stock;p.lowAlert=lowAlert;}}
-  else{if(PRODUCTS.find(x=>x.id===id)){showToast('ID already exists','error');return;}PRODUCTS.push({id,name,cat,buyPrice,price,stock:0,lowAlert});}
+  const shelf=document.getElementById('fShelf')?.value?.trim()||'';
+  if(editingProdId){const p=PRODUCTS.find(x=>x.id===editingProdId);if(p){p.name=name;p.cat=cat;p.buyPrice=buyPrice;p.price=price;p.stock=stock;p.lowAlert=lowAlert;p.shelf=shelf;}}
+  else{if(PRODUCTS.find(x=>x.id===id)){showToast('ID already exists','error');return;}PRODUCTS.push({id,name,cat,buyPrice,price,stock:0,lowAlert,shelf:document.getElementById('fShelf')?.value?.trim()||''});}
   saveProducts();renderPMTable();buildCategories();filterProducts();closeModal('productModal');showToast('Product saved','success');
 }
 function deleteProduct(id){
@@ -1449,7 +1468,7 @@ function renderReport(){
   } else if(type==='supplier'){
     el.innerHTML=`<div class="section-title">Supplier Report</div><div class="report-table">
       ${suppliers.map(s=>{const purs=filtPurchases.filter(p=>p.supplierId===s.id);const total=purs.reduce((x,p)=>x+p.total,0);
-        return`<div class="report-row"><span>${s.name}</span><span>${purs.length} invoices</span>
+        return`<div class="report-row" style="cursor:pointer" onclick="drillSupplier('${s.id}')"><span style="color:var(--accent)">${s.name}</span><span>${purs.length} invoices</span>
           <span class="mono">PKR ${total.toLocaleString()}</span>
           <span class="mono" style="color:${(s.payableBalance||0)>0?'var(--red)':'var(--green)'}">Bal: PKR ${(s.payableBalance||0).toLocaleString()}</span></div>`;}).join('')||noData}</div>`;
   } else if(type==='purchase'){
@@ -1463,7 +1482,7 @@ function renderReport(){
       </div>
       <div class="section-title">Purchase Invoices</div>
       <div class="report-table">${filtPurchases.map(p=>{const sup=suppliers.find(s=>s.id===p.supplierId);
-        return`<div class="report-row"><span class="mono">${p.id}</span><span>${sup?.name||'—'}</span><span>${p.date}</span>
+        return`<div class="report-row" style="cursor:pointer" onclick="drillPurchase('${p.id}')"><span class="mono" style="color:var(--accent)">${p.id}</span><span>${sup?.name||'—'}</span><span>${p.date}</span>
         <span class="mono">PKR ${p.total.toLocaleString()}</span>
         <span class="mono" style="color:${p.balance>0?'var(--red)':'var(--green)'}">Bal: PKR ${p.balance.toLocaleString()}</span>
         <span class="badge ${p.type==='cash'?'badge-green':'badge-purple'}">${p.type.toUpperCase()}</span></div>`;}).join('')||noData}</div>`;
@@ -1506,7 +1525,7 @@ function renderReport(){
   } else if(type==='customer'){
     const cm={};filtSales.forEach(s=>{if(!cm[s.customer])cm[s.customer]={phone:s.phone,tx:0,rev:0,credit:0};cm[s.customer].tx++;cm[s.customer].rev+=s.grand;if(s.isCredit)cm[s.customer].credit+=s.grand;});
     el.innerHTML=`<div class="section-title">Customer Report</div><div class="report-table">
-      ${Object.entries(cm).sort((a,b)=>b[1].rev-a[1].rev).map(([name,v])=>`<div class="report-row">
+      ${Object.entries(cm).sort((a,b)=>b[1].rev-a[1].rev).map(([name,v])=>`<div class="report-row" style="cursor:pointer" onclick="drillCustomer('${name}')">
         <span>${name}</span><span>${v.phone||'—'}</span><span>${v.tx} sales</span>
         <span class="mono">PKR ${v.rev.toLocaleString()}</span>
         ${v.credit>0?'<span class="mono" style="color:var(--red)">Credit: PKR '+v.credit.toLocaleString()+'</span>':''}</div>`).join('')||noData}</div>`;
@@ -1625,6 +1644,66 @@ function deleteCategory(i){
   if(!confirm('Delete category "'+cat+'"?'))return;
   CATEGORIES.splice(i,1);saveCats();renderCategoryList();buildCategories();
   showToast('Category deleted','success');
+}
+function showDrilldown(title, html){
+  document.getElementById('drilldownTitle').textContent=title;
+  document.getElementById('drilldownContent').innerHTML=html;
+  document.getElementById('drilldownModal').style.display='flex';
+}
+function drillSale(id){
+  const s=salesHistory.find(x=>x.id===id);if(!s)return;
+  showDrilldown('Bill: '+s.id,`
+    <div style="font-size:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Date:</span><span>${s.date} ${s.time}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Customer:</span><span>${s.customer}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Payment:</span><span>${s.isCredit?'CREDIT':s.payMode.toUpperCase()}</span></div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
+      <table style="width:100%;font-size:12px"><thead><tr><th style="text-align:left;padding:4px;color:var(--text3)">Item</th><th style="text-align:center;padding:4px;color:var(--text3)">Qty</th><th style="text-align:right;padding:4px;color:var(--text3)">Price</th><th style="text-align:right;padding:4px;color:var(--text3)">Total</th></tr></thead>
+      <tbody>${s.items.map(i=>`<tr><td style="padding:4px">${i.name}</td><td style="text-align:center;padding:4px">${i.qty}</td><td style="text-align:right;padding:4px">PKR ${i.price.toLocaleString()}</td><td style="text-align:right;padding:4px;color:var(--green)">PKR ${(i.price*i.qty).toLocaleString()}</td></tr>`).join('')}</tbody></table>
+      <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;color:var(--green)"><span>TOTAL</span><span>PKR ${s.grand.toLocaleString()}</span></div>
+      ${s.discAmt>0?`<div style="display:flex;justify-content:space-between;color:var(--yellow)"><span>Discount</span><span>-PKR ${s.discAmt.toLocaleString()}</span></div>`:''}
+    </div>`);
+}
+function drillPurchase(id){
+  const p=purchases.find(x=>x.id===id);if(!p)return;
+  const sup=suppliers.find(s=>s.id===p.supplierId);
+  showDrilldown('Purchase: '+p.id,`
+    <div style="font-size:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Date:</span><span>${p.date}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Supplier:</span><span>${sup?.name||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Type:</span><span>${p.type.toUpperCase()}</span></div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
+      <table style="width:100%;font-size:12px"><thead><tr><th style="text-align:left;padding:4px;color:var(--text3)">Item</th><th style="text-align:center;padding:4px;color:var(--text3)">Qty</th><th style="text-align:right;padding:4px;color:var(--text3)">Rate</th><th style="text-align:right;padding:4px;color:var(--text3)">Total</th><th style="text-align:center;padding:4px;color:var(--text3)">Shelf</th></tr></thead>
+      <tbody>${p.items.map(i=>`<tr><td style="padding:4px">${i.name}</td><td style="text-align:center;padding:4px">${i.qty}</td><td style="text-align:right;padding:4px">PKR ${i.price.toLocaleString()}</td><td style="text-align:right;padding:4px;color:var(--green)">PKR ${i.total.toLocaleString()}</td><td style="text-align:center;padding:4px;color:var(--accent)">${i.shelf||'—'}</td></tr>`).join('')}</tbody></table>
+      <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
+      <div style="display:flex;justify-content:space-between;font-weight:700"><span>Total</span><span>PKR ${p.total.toLocaleString()}</span></div>
+      <div style="display:flex;justify-content:space-between;color:var(--green)"><span>Paid</span><span>PKR ${p.paid.toLocaleString()}</span></div>
+      <div style="display:flex;justify-content:space-between;color:${p.balance>0?'var(--red)':'var(--green)'}"><span>Balance</span><span>PKR ${p.balance.toLocaleString()}</span></div>
+    </div>`);
+}
+function drillCustomer(name){
+  const sales=salesHistory.filter(s=>s.customer.toLowerCase()===name.toLowerCase());
+  const c=customers.find(x=>x.name.toLowerCase()===name.toLowerCase());
+  showDrilldown('Customer: '+name,`
+    <div style="font-size:12px">
+      ${c?`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Phone:</span><span>${c.phone||'—'}</span></div>`:''}
+      ${c&&(c.creditBalance||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:8px;color:var(--red)"><span>Credit Balance:</span><span>PKR ${(c.creditBalance||0).toLocaleString()}</span></div>`:''}
+      <table style="width:100%;font-size:12px"><thead><tr><th style="text-align:left;padding:4px;color:var(--text3)">Bill</th><th style="text-align:left;padding:4px;color:var(--text3)">Date</th><th style="text-align:right;padding:4px;color:var(--text3)">Amount</th><th style="text-align:center;padding:4px;color:var(--text3)">Type</th></tr></thead>
+      <tbody>${sales.map(s=>`<tr style="cursor:pointer" onclick="closeModal('drilldownModal');setTimeout(()=>drillSale('${s.id}'),200)"><td style="padding:4px;color:var(--accent)">${s.id}</td><td style="padding:4px">${s.date}</td><td style="text-align:right;padding:4px">PKR ${s.grand.toLocaleString()}</td><td style="text-align:center;padding:4px"><span class="badge ${s.isCredit?'badge-purple':'badge-green'}">${s.isCredit?'CREDIT':s.payMode.toUpperCase()}</span></td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">No transactions</td></tr>'}</tbody></table>
+      <div style="margin-top:8px;font-weight:700;display:flex;justify-content:space-between"><span>Total Sales:</span><span>PKR ${sales.reduce((t,s)=>t+s.grand,0).toLocaleString()}</span></div>
+    </div>`);
+}
+function drillSupplier(id){
+  const sup=suppliers.find(s=>s.id===id);if(!sup)return;
+  const purs=purchases.filter(p=>p.supplierId===id);
+  showDrilldown('Supplier: '+sup.name,`
+    <div style="font-size:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Phone:</span><span>${sup.phone||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;color:var(--red)"><span>Payable Balance:</span><span>PKR ${(sup.payableBalance||0).toLocaleString()}</span></div>
+      <table style="width:100%;font-size:12px"><thead><tr><th style="text-align:left;padding:4px;color:var(--text3)">Invoice</th><th style="text-align:left;padding:4px;color:var(--text3)">Date</th><th style="text-align:right;padding:4px;color:var(--text3)">Total</th><th style="text-align:right;padding:4px;color:var(--text3)">Balance</th></tr></thead>
+      <tbody>${purs.map(p=>`<tr style="cursor:pointer" onclick="closeModal('drilldownModal');setTimeout(()=>drillPurchase('${p.id}'),200)"><td style="padding:4px;color:var(--accent)">${p.id}</td><td style="padding:4px">${p.date}</td><td style="text-align:right;padding:4px">PKR ${p.total.toLocaleString()}</td><td style="text-align:right;padding:4px;color:${p.balance>0?'var(--red)':'var(--green)'}">PKR ${p.balance.toLocaleString()}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">No purchases</td></tr>'}</tbody></table>
+    </div>`);
 }
 function filterPurchaseProducts(n){
   const cat=document.getElementById('piCat'+n)?.value||'';

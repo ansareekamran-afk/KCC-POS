@@ -1398,8 +1398,8 @@ function renderReport(){
   const fromDate=from?new Date(from):new Date(0);
   const toDate=to?new Date(to+'T23:59:59'):new Date();
   const filtSales=salesHistory.filter(s=>new Date(s.ts)>=fromDate&&new Date(s.ts)<=toDate);
-  const filtReturns=salesReturns.filter(r=>new Date(r.ts)>=fromDate&&new Date(r.ts)<=toDate);
-  const returnTotal=filtReturns.reduce((s,r)=>s+r.amount,0);
+  const filtReturns=returns.filter(r=>new Date(r.ts)>=fromDate&&new Date(r.ts)<=toDate);
+  const returnTotal=filtReturns.reduce((s,r)=>s+(r.refundAmt||0),0);
   const netSales=filtSales.reduce((s,x)=>s+x.grand,0)-returnTotal;
   const filtPurchases=purchases.filter(p=>{const d=new Date(p.date);return d>=fromDate&&d<=toDate;});
   const el=document.getElementById('reportContent');
@@ -1409,7 +1409,7 @@ function renderReport(){
     const rev=filtSales.reduce((s,x)=>s+x.grand,0);
     const prof=filtSales.reduce((s,x)=>s+(x.profit||0),0);
     const purTotal=filtPurchases.reduce((s,x)=>s+x.total,0);
-    const retAmt=filtReturns.reduce((s,r)=>s+r.amount,0);
+    const retAmt=filtReturns.reduce((s,r)=>s+(r.refundAmt||0),0);
     el.innerHTML=`
       <div class="stat-grid">
         <div class="stat-card"><div class="label">Revenue</div><div class="value"><span style="font-size:11px;font-weight:400;opacity:.7">PKR </span>${rev.toLocaleString()}</div><div class="sub">${filtSales.length} transactions</div></div>
@@ -1482,16 +1482,16 @@ function renderReport(){
           <span class="mono">PKR ${total.toLocaleString()}</span>
           <span class="mono" style="color:${(s.payableBalance||0)>0?'var(--red)':'var(--green)'}">Bal: PKR ${(s.payableBalance||0).toLocaleString()}</span></div>`;}).join('')||noData}</div>`;
   } else if(type==='returns'){
-    const retTotal=filtReturns.reduce((s,r)=>s+r.amount,0);
+    const retTotal=filtReturns.reduce((s,r)=>s+(r.refundAmt||0),0);
     el.innerHTML=`<div class="stat-grid">
       <div class="stat-card"><div class="label">Total Returns</div><div class="value" style="color:var(--red)"><span style="font-size:11px;font-weight:400;opacity:.7">PKR </span>${retTotal.toLocaleString()}</div><div class="sub">${filtReturns.length} returns</div></div>
       </div>
       <div class="section-title">Return Transactions</div>
-      <div class="report-table">${filtReturns.length?filtReturns.map(r=>`<div class="report-row" style="cursor:pointer" onclick="showDrilldown('Return: ${r.origId||''}',\`<div style='font-size:12px'><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Original Bill:</span><span>${r.origId||'—'}</span></div><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Customer:</span><span>${r.customer||'—'}</span></div><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Items:</span><span>${r.items?.map(i=>i.name+' x'+i.qty).join(', ')||'—'}</span></div><div style='display:flex;justify-content:space-between;font-weight:700;color:var(--red)'><span>Amount</span><span>PKR ${r.amount.toLocaleString()}</span></div><div style='margin-top:8px;color:var(--text3)'>${r.reason||''}</div></div>\`)">
-        <span class="mono" style="color:var(--accent)">${r.origId||'—'}</span>
-        <span>${r.customer||'Walk-in'}</span>
+      <div class="report-table">${filtReturns.length?filtReturns.map(r=>`<div class="report-row" style="cursor:pointer" onclick="showDrilldown('Return: ${r.billId||''}',\`<div style='font-size:12px'><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Original Bill:</span><span>${r.billId||'—'}</span></div><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Customer:</span><span>${r.name||'—'}</span></div><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Items:</span><span>${r.name||'—'} x${r.qty||0}</span></div><div style='display:flex;justify-content:space-between;font-weight:700;color:var(--red)'><span>Amount</span><span>PKR ${(r.refundAmt||0).toLocaleString()}</span></div><div style='margin-top:8px;color:var(--text3)'>${r.reason||''}</div></div>\`)">
+        <span class="mono" style="color:var(--accent)">${r.billId||'—'}</span>
+        <span>${r.name||'—'}</span>
         <span>${r.date||''}</span>
-        <span class="mono" style="color:var(--red)">-PKR ${r.amount.toLocaleString()}</span>
+        <span class="mono" style="color:var(--red)">-PKR ${(r.refundAmt||0).toLocaleString()}</span>
         <span style="color:var(--text3);font-size:11px">${r.reason||''}</span></div>`).join(''):noData}</div>`;
   } else if(type==='purchase'){
     const purTotal=filtPurchases.reduce((s,x)=>s+x.total,0);

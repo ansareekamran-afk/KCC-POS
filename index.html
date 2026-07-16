@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KCC POS v11 — Kamran Computer Care</title>
+<title>KCC POS v12 — Kamran Computer Care</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='10' fill='%231d4ed8'/><text x='32' y='46' text-anchor='middle' font-family='Arial Black,Arial' font-size='38' font-weight='900' fill='white'>K</text></svg>">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
       </g>
     </svg>
     <div style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:4px">Kamran Computer Care</div>
-    <div style="font-size:12px;color:#64748b;margin-bottom:28px">POS v11 — Authorized Access Only</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:28px">POS v12 — Authorized Access Only</div>
     <input id="pwdInput" type="password" class="lock-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPwd()">
     <div id="pwdError" class="lock-error"></div>
     <button class="lock-btn" onclick="checkPwd()">Unlock POS</button>
@@ -230,7 +230,7 @@ tr:hover td{background:var(--surface2)}
 <div class="topbar">
   <div class="logo">
     <div class="logo-icon">KCC</div>
-    <div><div class="logo-text">Kamran Computer Care — POS v11</div>
+    <div><div class="logo-text">Kamran Computer Care — POS v12</div>
     <div class="logo-sub">Shop 13, Bhayani Centre · North Nazimabad · 0318-8920020</div></div>
   </div>
   <div class="topbar-right">
@@ -248,7 +248,8 @@ tr:hover td{background:var(--surface2)}
   <span class="pending-badge" id="pendingBadge"></span>
   <span id="lastSyncTime" style="font-size:10px;color:var(--text3)"></span>
   <div class="sync-actions">
-    <button class="btn-sync" onclick="syncAllToSheet()">↑ Sync Now</button>
+    <button class="btn-sync" onclick="showShortcuts()" title="Keyboard Shortcuts">⌨️</button>
+      <button class="btn-sync" onclick="syncAllToSheet()">↑ Sync Now</button>
     <button class="btn-sync" onclick="pushProductsToSheet()">⟳ Sync Products</button>
   </div>
 </div>
@@ -413,6 +414,7 @@ tr:hover td{background:var(--surface2)}
       <option value="inventory">Inventory Report</option>
       <option value="supplier">Supplier Report</option>
       <option value="customer">Customer Report</option>
+      <option value="returns">Sales Returns Report</option>
       <option value="purchase">Purchase Report</option>
       <option value="payables">Payables Report</option>
       <option value="receivables">Receivables Report</option>
@@ -835,7 +837,7 @@ function renderProducts(list){
   list=list||PRODUCTS;
   const grid=document.getElementById('productsGrid');
   if(!list.length){grid.innerHTML='<div class="no-results">No products found</div>';return;}
-  grid.innerHTML=list.map(p=>'<div class="product-card '+(p.stock===0?'oos':'')+'" onclick="addToCart(\''+p.id+'\')"><div class="cat-tag">'+p.cat.split(' ')[0]+'</div><div class="name">'+p.name+'</div><div class="price">PKR '+p.price.toLocaleString()+'</div><div class="stock-badge '+(p.stock<=(p.lowAlert||5)?'low':'')+'">'+(p.stock===0?'Out':p.stock<=(p.lowAlert||5)?p.stock+' left':p.stock)+'</div></div>').join('');
+  grid.innerHTML=list.map(p=>'<div class="product-card '+(p.stock===0?'oos':'')+'" onclick="addToCart(\''+p.id+'\')"><div class="cat-tag">'+p.cat.split(' ')[0]+(p.shelf?' · <span style="color:var(--accent)">'+p.shelf+'</span>':'')+'</div><div class="name">'+p.name+'</div><div class="price">PKR '+p.price.toLocaleString()+'</div><div class="stock-badge '+(p.stock<=(p.lowAlert||5)?'low':'')+'">'+(p.stock===0?'Out':p.stock<=(p.lowAlert||5)?p.stock+' left':p.stock)+'</div></div>').join('');
 }
 
 // CART
@@ -1393,6 +1395,9 @@ function renderReport(){
   const fromDate=from?new Date(from):new Date(0);
   const toDate=to?new Date(to+'T23:59:59'):new Date();
   const filtSales=salesHistory.filter(s=>new Date(s.ts)>=fromDate&&new Date(s.ts)<=toDate);
+  const filtReturns=salesReturns.filter(r=>new Date(r.ts)>=fromDate&&new Date(r.ts)<=toDate);
+  const returnTotal=filtReturns.reduce((s,r)=>s+r.amount,0);
+  const netSales=filtSales.reduce((s,x)=>s+x.grand,0)-returnTotal;
   const filtPurchases=purchases.filter(p=>{const d=new Date(p.date);return d>=fromDate&&d<=toDate;});
   const el=document.getElementById('reportContent');
   const noData='<div class="report-row" style="justify-content:center;color:var(--text3)">No data in this period</div>';
@@ -1401,30 +1406,32 @@ function renderReport(){
     const rev=filtSales.reduce((s,x)=>s+x.grand,0);
     const prof=filtSales.reduce((s,x)=>s+(x.profit||0),0);
     const purTotal=filtPurchases.reduce((s,x)=>s+x.total,0);
+    const retAmt=filtReturns.reduce((s,r)=>s+r.amount,0);
     el.innerHTML=`
       <div class="stat-grid">
         <div class="stat-card"><div class="label">Revenue</div><div class="value"><span style="font-size:11px;font-weight:400;opacity:.7">PKR </span>${rev.toLocaleString()}</div><div class="sub">${filtSales.length} transactions</div></div>
         <div class="stat-card"><div class="label">Gross Profit</div><div class="value" style="color:var(--accent)"><span style="font-size:11px;font-weight:400;opacity:.7">PKR </span>${prof.toLocaleString()}</div><div class="sub">${rev?Math.round(prof/rev*100):0}% margin</div></div>
         <div class="stat-card"><div class="label">Purchases</div><div class="value" style="color:var(--red)"><span style="font-size:11px;font-weight:400;opacity:.7">PKR </span>${purTotal.toLocaleString()}</div></div>
-        <div class="stat-card"><div class="label">Avg Sale</div><div class="value">PKR ${filtSales.length?Math.round(rev/filtSales.length).toLocaleString():0}</div></div>
+        <div class="stat-card"><div class="label">Returns</div><div class="value" style="color:var(--red)"><span style="font-size:11px;font-weight:400;opacity:.7">PKR </span>${retAmt.toLocaleString()}</div><div class="sub">${filtReturns.length} returns</div></div>
+        <div class="stat-card"><div class="label">Net Revenue</div><div class="value" style="color:var(--green)"><span style="font-size:11px;font-weight:400;opacity:.7">PKR </span>${(rev-retAmt).toLocaleString()}</div></div>
       </div>
       <div class="section-title">Payment Breakdown</div>
       <div class="report-table">
         ${[['Cash',filtSales.filter(x=>x.payMode==='cash'&&!x.isCredit)],['Card',filtSales.filter(x=>x.payMode==='card')],['EasyPaisa',filtSales.filter(x=>x.payMode==='easypaisa')],['Credit',filtSales.filter(x=>x.isCredit)]].map(([l,s])=>`<div class="report-row"><span>${l}</span><span>${s.length} sales</span><span class="mono">PKR ${s.reduce((t,x)=>t+x.grand,0).toLocaleString()}</span></div>`).join('')}
       </div>
       <div class="section-title">Recent Transactions</div>
-      <div class="report-table">${filtSales.slice(0,20).map(s=>`<div class="report-row">
+      <div class="report-table">${filtSales.slice(0,20).map(s=>`<div class="report-row" style="cursor:pointer" onclick="drillSale('${s.id}')">
         <span class="mono">${s.id}</span><span>${s.customer}</span><span>${s.time}</span>
         <span><span class="badge ${s.isCredit?'badge-purple':s.payMode==='cash'?'badge-green':'badge-blue'}">${s.isCredit?'CREDIT':s.payMode.toUpperCase()}</span></span>
         <span class="mono">PKR ${s.grand.toLocaleString()}</span></div>`).join('')||noData}</div>`;
   } else if(type==='sales_by_item'){
     const pm={};filtSales.forEach(s=>s.items.forEach(i=>{if(!pm[i.id])pm[i.id]={name:i.name,qty:0,rev:0};pm[i.id].qty+=i.qty;pm[i.id].rev+=i.price*i.qty;}));
     el.innerHTML=`<div class="section-title">Sales by Item</div><div class="report-table">
-      ${Object.values(pm).sort((a,b)=>b.rev-a.rev).map((p,i)=>`<div class="report-row"><span style="color:var(--text3)">#${i+1}</span><span>${p.name}</span><span class="mono">${p.qty} pcs</span><span class="mono">PKR ${p.rev.toLocaleString()}</span></div>`).join('')||noData}</div>`;
+      ${Object.values(pm).sort((a,b)=>b.rev-a.rev).map((p,i)=>`<div class="report-row" style="cursor:pointer" onclick="drillItem('${p.name}',filtSales)"><span style="color:var(--text3)">#${i+1}</span><span style="color:var(--accent)">${p.name}</span><span class="mono">${p.qty} pcs</span><span class="mono">PKR ${p.rev.toLocaleString()}</span></div>`).join('')||noData}</div>`;
   } else if(type==='sales_by_month'){
     const mm={};salesHistory.forEach(s=>{const k=new Date(s.ts).toLocaleDateString('en-PK',{year:'numeric',month:'short'});if(!mm[k])mm[k]={rev:0,tx:0};mm[k].rev+=s.grand;mm[k].tx++;});
     el.innerHTML=`<div class="section-title">Monthly Sales</div><div class="report-table">
-      ${Object.entries(mm).map(([m,v])=>`<div class="report-row"><span>${m}</span><span class="mono">${v.tx} sales</span><span class="mono">PKR ${v.rev.toLocaleString()}</span></div>`).join('')||noData}</div>`;
+      ${Object.entries(mm).map(([m,v])=>`<div class="report-row" style="cursor:pointer" onclick="drillMonth('${m}')"><span style="color:var(--accent)">${m}</span><span class="mono">${v.tx} sales</span><span class="mono">PKR ${v.rev.toLocaleString()}</span></div>`).join('')||noData}</div>`;
   } else if(type==='profit'){
     const pp={};filtSales.forEach(s=>s.items.forEach(i=>{const p=PRODUCTS.find(x=>x.id===i.id);const prof=(i.price-(p?.buyPrice||0))*i.qty;if(!pp[i.id])pp[i.id]={name:i.name,rev:0,prof:0,qty:0};pp[i.id].rev+=i.price*i.qty;pp[i.id].prof+=prof;pp[i.id].qty+=i.qty;}));
     const totalRev=filtSales.reduce((s,x)=>s+x.grand,0);const totalProf=filtSales.reduce((s,x)=>s+(x.profit||0),0);
@@ -1433,16 +1440,16 @@ function renderReport(){
       <div class="stat-card"><div class="label">Gross Profit</div><div class="value" style="color:var(--accent)">PKR ${totalProf.toLocaleString()}</div></div>
       <div class="stat-card"><div class="label">Margin</div><div class="value">${totalRev?Math.round(totalProf/totalRev*100):0}%</div></div>
       </div><div class="section-title">Product-wise Profit</div><div class="report-table">
-      ${Object.values(pp).sort((a,b)=>b.prof-a.prof).map(p=>`<div class="report-row">
-        <span>${p.name}</span><span class="mono">${p.qty} pcs</span>
+      ${Object.values(pp).sort((a,b)=>b.prof-a.prof).map(p=>`<div class="report-row" style="cursor:pointer" onclick="drillItem('${p.name}',filtSales)">
+        <span style="color:var(--accent)">${p.name}</span><span class="mono">${p.qty} pcs</span>
         <span class="mono">PKR ${p.rev.toLocaleString()}</span>
         <span class="mono" style="color:var(--green)">PKR ${p.prof.toLocaleString()}</span>
         <span class="mono" style="color:var(--text3)">${p.rev?Math.round(p.prof/p.rev*100):0}%</span></div>`).join('')||noData}</div>`;
   } else if(type==='top_profit'){
     const pp={};filtSales.forEach(s=>s.items.forEach(i=>{const p=PRODUCTS.find(x=>x.id===i.id);const prof=(i.price-(p?.buyPrice||0))*i.qty;if(!pp[i.id])pp[i.id]={name:i.name,prof:0,qty:0};pp[i.id].prof+=prof;pp[i.id].qty+=i.qty;}));
     el.innerHTML=`<div class="section-title">Top Products by Profit</div><div class="report-table">
-      ${Object.values(pp).sort((a,b)=>b.prof-a.prof).slice(0,15).map((p,i)=>`<div class="report-row">
-        <span style="color:var(--text3)">#${i+1}</span><span>${p.name}</span><span class="mono">${p.qty} pcs</span>
+      ${Object.values(pp).sort((a,b)=>b.prof-a.prof).slice(0,15).map((p,i)=>`<div class="report-row" style="cursor:pointer" onclick="drillItem('${p.name}',filtSales)">
+        <span style="color:var(--text3)">#${i+1}</span><span style="color:var(--accent)">${p.name}</span><span class="mono">${p.qty} pcs</span>
         <span class="mono" style="color:var(--green)">PKR ${p.prof.toLocaleString()}</span></div>`).join('')||noData}</div>`;
   } else if(type==='inventory'){
     const totalVal=PRODUCTS.reduce((s,p)=>s+(p.buyPrice||0)*p.stock,0);
@@ -1471,6 +1478,18 @@ function renderReport(){
         return`<div class="report-row" style="cursor:pointer" onclick="drillSupplier('${s.id}')"><span style="color:var(--accent)">${s.name}</span><span>${purs.length} invoices</span>
           <span class="mono">PKR ${total.toLocaleString()}</span>
           <span class="mono" style="color:${(s.payableBalance||0)>0?'var(--red)':'var(--green)'}">Bal: PKR ${(s.payableBalance||0).toLocaleString()}</span></div>`;}).join('')||noData}</div>`;
+  } else if(type==='returns'){
+    const retTotal=filtReturns.reduce((s,r)=>s+r.amount,0);
+    el.innerHTML=`<div class="stat-grid">
+      <div class="stat-card"><div class="label">Total Returns</div><div class="value" style="color:var(--red)"><span style="font-size:11px;font-weight:400;opacity:.7">PKR </span>${retTotal.toLocaleString()}</div><div class="sub">${filtReturns.length} returns</div></div>
+      </div>
+      <div class="section-title">Return Transactions</div>
+      <div class="report-table">${filtReturns.length?filtReturns.map(r=>`<div class="report-row" style="cursor:pointer" onclick="showDrilldown('Return: ${r.origId||''}',\`<div style='font-size:12px'><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Original Bill:</span><span>${r.origId||'—'}</span></div><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Customer:</span><span>${r.customer||'—'}</span></div><div style='display:flex;justify-content:space-between;margin-bottom:4px'><span>Items:</span><span>${r.items?.map(i=>i.name+' x'+i.qty).join(', ')||'—'}</span></div><div style='display:flex;justify-content:space-between;font-weight:700;color:var(--red)'><span>Amount</span><span>PKR ${r.amount.toLocaleString()}</span></div><div style='margin-top:8px;color:var(--text3)'>${r.reason||''}</div></div>\`)">
+        <span class="mono" style="color:var(--accent)">${r.origId||'—'}</span>
+        <span>${r.customer||'Walk-in'}</span>
+        <span>${r.date||''}</span>
+        <span class="mono" style="color:var(--red)">-PKR ${r.amount.toLocaleString()}</span>
+        <span style="color:var(--text3);font-size:11px">${r.reason||''}</span></div>`).join(''):noData}</div>`;
   } else if(type==='purchase'){
     const purTotal=filtPurchases.reduce((s,x)=>s+x.total,0);
     const purPaid=filtPurchases.reduce((s,x)=>s+x.paid,0);
@@ -1597,6 +1616,23 @@ function logout(){
   }
 }
 document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.style.display='none';}));
+// KEYBOARD SHORTCUTS HELP
+function showShortcuts(){
+  showDrilldown('⌨️ Keyboard Shortcuts',`
+    <div style="font-size:12px;line-height:2">
+      <div style="display:grid;grid-template-columns:120px 1fr;gap:4px">
+        <span style="color:var(--accent);font-family:monospace;font-weight:700">F2</span><span>Search products (POS)</span>
+        <span style="color:var(--accent);font-family:monospace;font-weight:700">F3</span><span>New Purchase</span>
+        <span style="color:var(--accent);font-family:monospace;font-weight:700">F4</span><span>Sales Return</span>
+        <span style="color:var(--accent);font-family:monospace;font-weight:700">F5</span><span>Go to Reports</span>
+        <span style="color:var(--accent);font-family:monospace;font-weight:700">F6</span><span>Go to Inventory</span>
+        <span style="color:var(--accent);font-family:monospace;font-weight:700">F7</span><span>Go to Products</span>
+        <span style="color:var(--accent);font-family:monospace;font-weight:700">Esc</span><span>Close any popup</span>
+        <span style="color:var(--accent);font-family:monospace;font-weight:700">Enter</span><span>Confirm password / Generate Bill</span>
+        <span style="color:var(--accent);font-family:monospace;font-weight:700">?</span><span>Show this help</span>
+      </div>
+    </div>`);
+}
 document.addEventListener('keydown',e=>{
   if(e.key==='F2'){e.preventDefault();document.getElementById('searchInput')?.focus();}
   if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(m=>m.style.display='none');
@@ -1649,6 +1685,56 @@ function showDrilldown(title, html){
   document.getElementById('drilldownTitle').textContent=title;
   document.getElementById('drilldownContent').innerHTML=html;
   document.getElementById('drilldownModal').style.display='flex';
+}
+function drillItem(name, sales){
+  const itemSales=sales.filter(s=>s.items.some(i=>i.name===name));
+  showDrilldown('Sales: '+name,`
+    <div style="font-size:12px">
+      <div style="margin-bottom:8px;color:var(--text3)">${itemSales.length} transactions</div>
+      <table style="width:100%;font-size:12px">
+        <thead><tr>
+          <th style="text-align:left;padding:4px;color:var(--text3)">Bill</th>
+          <th style="text-align:left;padding:4px;color:var(--text3)">Date</th>
+          <th style="text-align:left;padding:4px;color:var(--text3)">Customer</th>
+          <th style="text-align:center;padding:4px;color:var(--text3)">Qty</th>
+          <th style="text-align:right;padding:4px;color:var(--text3)">Amount</th>
+        </tr></thead>
+        <tbody>${itemSales.map(s=>{const item=s.items.find(i=>i.name===name);return`<tr style="cursor:pointer" onclick="closeModal('drilldownModal');setTimeout(()=>drillSale('${s.id}'),200)">
+          <td style="padding:4px;color:var(--accent)">${s.id}</td>
+          <td style="padding:4px">${s.date}</td>
+          <td style="padding:4px">${s.customer}</td>
+          <td style="text-align:center;padding:4px">${item?.qty||0}</td>
+          <td style="text-align:right;padding:4px;color:var(--green)">PKR ${((item?.price||0)*(item?.qty||0)).toLocaleString()}</td>
+        </tr>`;}).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">No transactions</td></tr>'}
+        </tbody>
+      </table>
+      <div style="margin-top:8px;font-weight:700;display:flex;justify-content:space-between">
+        <span>Total:</span>
+        <span>PKR ${itemSales.reduce((t,s)=>{const i=s.items.find(x=>x.name===name);return t+(i?(i.price*i.qty):0);},0).toLocaleString()}</span>
+      </div>
+    </div>`);
+}
+function drillMonth(monthKey){
+  const monthSales=salesHistory.filter(s=>new Date(s.ts).toLocaleDateString('en-PK',{year:'numeric',month:'short'})===monthKey);
+  showDrilldown('Month: '+monthKey,`
+    <div style="font-size:12px">
+      <div style="margin-bottom:8px;color:var(--text3)">${monthSales.length} transactions · PKR ${monthSales.reduce((t,s)=>t+s.grand,0).toLocaleString()}</div>
+      <table style="width:100%;font-size:12px">
+        <thead><tr>
+          <th style="text-align:left;padding:4px;color:var(--text3)">Bill</th>
+          <th style="text-align:left;padding:4px;color:var(--text3)">Date</th>
+          <th style="text-align:left;padding:4px;color:var(--text3)">Customer</th>
+          <th style="text-align:right;padding:4px;color:var(--text3)">Amount</th>
+        </tr></thead>
+        <tbody>${monthSales.map(s=>`<tr style="cursor:pointer" onclick="closeModal('drilldownModal');setTimeout(()=>drillSale('${s.id}'),200)">
+          <td style="padding:4px;color:var(--accent)">${s.id}</td>
+          <td style="padding:4px">${s.date}</td>
+          <td style="padding:4px">${s.customer}</td>
+          <td style="text-align:right;padding:4px;color:var(--green)">PKR ${s.grand.toLocaleString()}</td>
+        </tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">No transactions</td></tr>'}
+        </tbody>
+      </table>
+    </div>`);
 }
 function drillSale(id){
   const s=salesHistory.find(x=>x.id===id);if(!s)return;

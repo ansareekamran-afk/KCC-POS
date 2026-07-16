@@ -757,7 +757,8 @@ function init(){
   buildCategories();renderProducts();renderCart();
   updateCustomerDatalist();checkLowStock();checkAgingAlerts();
   const today=localDateStr(new Date());
-  document.getElementById('reportFrom').value=today;
+  const from30=new Date();from30.setDate(from30.getDate()-30);
+  document.getElementById('reportFrom').value=localDateStr(from30);
   document.getElementById('reportTo').value=today;
 }
 function localDateStr(d){

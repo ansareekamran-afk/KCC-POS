@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KCC POS v12 — Kamran Computer Care</title>
+<title>KCC POS v13 — Kamran Computer Care</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='10' fill='%231d4ed8'/><text x='32' y='46' text-anchor='middle' font-family='Arial Black,Arial' font-size='38' font-weight='900' fill='white'>K</text></svg>">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
       </g>
     </svg>
     <div style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:4px">Kamran Computer Care</div>
-    <div style="font-size:12px;color:#64748b;margin-bottom:28px">POS v12 — Authorized Access Only</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:28px">POS v13 — Authorized Access Only</div>
     <input id="pwdInput" type="password" class="lock-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPwd()">
     <div id="pwdError" class="lock-error"></div>
     <button class="lock-btn" onclick="checkPwd()">Unlock POS</button>
@@ -230,7 +230,7 @@ tr:hover td{background:var(--surface2)}
 <div class="topbar">
   <div class="logo">
     <div class="logo-icon">KCC</div>
-    <div><div class="logo-text">Kamran Computer Care — POS v12</div>
+    <div><div class="logo-text">Kamran Computer Care — POS v13</div>
     <div class="logo-sub">Shop 13, Bhayani Centre · North Nazimabad · 0318-8920020</div></div>
   </div>
   <div class="topbar-right">
@@ -670,7 +670,7 @@ tr:hover td{background:var(--surface2)}
 </div>
 
 <script>
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbxFdnG_CFy9KZ2HWfKynAU-FZtO8HwSU49r7NUxVnNGEikEQuWolJKrA2ehS53JYqUG/exec';
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbycCTSk-5zsiOSHgVGld_TIVjvvJnB3Zgr_5y0QDEkitSEexZgSH3HkcogFH3J5i99d/exec';
 
 // AUTH
 function checkPwd(){
@@ -1232,11 +1232,13 @@ function renderInventoryTable(){
     const status=p.stock===0?'<span class="badge badge-red">Out</span>':p.stock<=(p.lowAlert||5)?'<span class="badge badge-yellow">Low</span>':'<span class="badge badge-green">OK</span>';
     return`<tr><td class="mono" style="color:var(--text3)">${p.id}</td><td>${p.name}</td>
       <td><span class="badge badge-blue">${p.cat.split(' ')[0]}</span></td>
-      <td class="mono">PKR ${(p.buyPrice||0).toLocaleString()}</td>
-      <td class="mono">PKR ${p.price.toLocaleString()}</td>
+      <td style="color:var(--accent);font-size:11px">${p.shelf||'—'}</td>
+      <td class="mono" style="text-align:right">PKR ${(p.buyPrice||0).toLocaleString()}</td>
+      <td class="mono" style="text-align:right">PKR ${p.price.toLocaleString()}</td>
       <td><span class="badge ${margin>=20?'badge-green':margin>=10?'badge-yellow':'badge-red'}">${margin}%</span></td>
-      <td class="mono" style="color:${p.stock<=(p.lowAlert||5)?'var(--yellow)':'var(--text)'}">${p.stock}</td>
-      <td class="mono">PKR ${val.toLocaleString()}</td>
+      <td class="mono" style="text-align:right;color:${p.stock<=(p.lowAlert||5)?'var(--yellow)':'var(--text)'}">${p.stock}</td>
+      <td class="mono" style="text-align:right">PKR ${val.toLocaleString()}</td>
+      <td class="mono" style="text-align:right">PKR ${(p.price*p.stock).toLocaleString()}</td>
       <td>${status}</td></tr>`;
   }).join('');
 }

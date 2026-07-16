@@ -268,8 +268,9 @@ tr:hover td{background:var(--surface2)}
 <!-- POS VIEW -->
 <div class="view active" id="view-pos">
   <div class="products-panel">
-    <div class="search-bar">
-      <input class="search-input" type="text" id="searchInput" placeholder="🔍 Search or scan barcode... (F2)" oninput="filterProducts()" autofocus>
+    <div class="search-bar" style="display:flex;gap:8px;align-items:center">
+      <input class="search-input" type="text" id="searchInput" placeholder="🔍 Search or scan barcode... (F2)" oninput="filterProducts()" autofocus style="flex:1">
+      <button onclick="openReturnForm()" style="background:var(--red);color:#fff;border:none;border-radius:var(--r);padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">↩ Sales Return</button>
     </div>
     <div class="categories" id="categories"></div>
     <div class="products-grid" id="productsGrid"></div>
